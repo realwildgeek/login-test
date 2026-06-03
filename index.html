@@ -17,6 +17,14 @@
         /* 增加不明显的注册按钮样式 */
         #mode-toggle { position: fixed; top: 20px; right: 20px; font-size: 13px; color: #d1d5db; cursor: pointer; transition: color 0.2s; user-select: none; }
         #mode-toggle:hover { color: #6b7280; }
+        
+        /* ✨ 新增：验证码和邮箱输入框的专属样式 */
+        .reg-only { display: none; }
+        .code-group { gap: 10px; margin-bottom: 20px; }
+        .code-group input { margin-bottom: 0; flex: 1; }
+        .code-btn { background: #3b82f6; color: white; border: none; padding: 0 15px; border-radius: 8px; cursor: pointer; font-size: 14px; white-space: nowrap; transition: background 0.2s;}
+        .code-btn:hover { background: #2563eb; }
+        .code-btn:disabled { background: #9ca3af; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -26,113 +34,4 @@
         <h1>统一认证中心</h1>
         <p>私有云全家桶 SSO 护照签发</p>
         
-        <input type="text" id="username" placeholder="请输入账号" autocomplete="username">
-        <input type="password" id="password" placeholder="请输入密码" autocomplete="current-password" onkeypress="if(event.key === 'Enter') document.getElementById('login-btn').click()">
-        
-        <button id="login-btn" onclick="doLogin()">签发护照 (登录)</button>
-        <div id="msg"></div>
-    </div>
-
-    <script>
-        let isRegisterMode = false;
-
-        // 切换界面的显示模式
-        function toggleMode() {
-            isRegisterMode = !isRegisterMode;
-            document.querySelector('.login-box h1').innerText = isRegisterMode ? "申请系统护照" : "统一认证中心";
-            document.querySelector('.login-box p').innerText = isRegisterMode ? "首次使用请注册主密码" : "私有云全家桶 SSO 护照签发";
-            document.getElementById('login-btn').innerText = isRegisterMode ? "确认注册" : "签发护照 (登录)";
-            document.getElementById('login-btn').onclick = isRegisterMode ? doRegister : doLogin;
-            document.getElementById('mode-toggle').innerText = isRegisterMode ? "返回登录" : "注册新账号";
-            document.getElementById('msg').innerText = "";
-        }
-
-        // 独立的注册逻辑
-        async function doRegister() {
-            const u = document.getElementById('username').value.trim();
-            const p = document.getElementById('password').value;
-            const msgObj = document.getElementById('msg');
-            const btn = document.getElementById('login-btn');
-
-            if (!u || !p) return msgObj.innerText = "账号和密码不能为空";
-
-            msgObj.innerText = "";
-            msgObj.style.color = "#6b7280";
-            btn.innerText = "注册哈希计算中...";
-            btn.disabled = true;
-
-            try {
-                const res = await fetch('/api/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: u, password: p })
-                });
-
-                if (res.ok) {
-                    msgObj.style.color = "#10b981"; 
-                    msgObj.innerText = "注册成功！正在返回登录界面...";
-                    document.getElementById('password').value = ""; // 清空密码防侧漏
-                    setTimeout(() => toggleMode(), 1500);
-                } else {
-                    const err = await res.text();
-                    throw new Error(err);
-                }
-            } catch (e) {
-                msgObj.style.color = "#ef4444"; 
-                msgObj.innerText = e.message;
-            } finally {
-                btn.innerText = "确认注册";
-                btn.disabled = false;
-            }
-        }
-        async function doLogin() {
-            const u = document.getElementById('username').value.trim();
-            const p = document.getElementById('password').value;
-            const msgObj = document.getElementById('msg');
-            const btn = document.getElementById('login-btn');
-
-            if (!u || !p) return msgObj.innerText = "账号和密码不能为空";
-
-            msgObj.innerText = "";
-            msgObj.style.color = "#6b7280";
-            btn.innerText = "验证中...";
-            btn.disabled = true;
-
-            try {
-                const res = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: u, password: p })
-                });
-
-                if (res.ok) {
-                    msgObj.style.color = "#10b981"; // 绿色
-                    msgObj.innerText = "登录成功！正在进入系统...";
-                    
-                    // 获取 URL 中的 returnUrl 参数（如果有的话），用于登录后跳回业务系统
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const returnUrl = urlParams.get('returnUrl');
-                    
-                    setTimeout(() => {
-                        if (returnUrl) {
-                            window.location.href = returnUrl;
-                        } else {
-                            msgObj.innerText = "已获取全域凭证 (无返回目标)";
-                        }
-                    }, 1000);
-                } else {
-                    const err = await res.text();
-                    throw new Error(err);
-                }
-            } catch (e) {
-                msgObj.style.color = "#ef4444"; // 红色
-                msgObj.innerText = e.message;
-            } finally {
-                btn.innerText = "签发护照 (登录)";
-                btn.disabled = false;
-            }
-        }
-    </script>
-
-</body>
-</html>
+        <input type="text" id="username" placeholder="请输入账号" autocomplete="username
