@@ -14,22 +14,77 @@
         button { width: 100%; padding: 12px; background: #111; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
         button:hover { background: #374151; }
         #msg { margin-top: 15px; font-size: 14px; color: #ef4444; min-height: 20px;}
+        /* 增加不明显的注册按钮样式 */
+        #mode-toggle { position: fixed; top: 20px; right: 20px; font-size: 13px; color: #d1d5db; cursor: pointer; transition: color 0.2s; user-select: none; }
+        #mode-toggle:hover { color: #6b7280; }
     </style>
 </head>
 <body>
 
+    <div id="mode-toggle" onclick="toggleMode()">注册新账号</div>
     <div class="login-box">
         <h1>统一认证中心</h1>
         <p>私有云全家桶 SSO 护照签发</p>
         
         <input type="text" id="username" placeholder="请输入账号" autocomplete="username">
-        <input type="password" id="password" placeholder="请输入密码" autocomplete="current-password" onkeypress="if(event.key === 'Enter') doLogin()">
+        <input type="password" id="password" placeholder="请输入密码" autocomplete="current-password" onkeypress="if(event.key === 'Enter') document.getElementById('login-btn').click()">
         
         <button id="login-btn" onclick="doLogin()">签发护照 (登录)</button>
         <div id="msg"></div>
     </div>
 
     <script>
+        let isRegisterMode = false;
+
+        // 切换界面的显示模式
+        function toggleMode() {
+            isRegisterMode = !isRegisterMode;
+            document.querySelector('.login-box h1').innerText = isRegisterMode ? "申请系统护照" : "统一认证中心";
+            document.querySelector('.login-box p').innerText = isRegisterMode ? "首次使用请注册主密码" : "私有云全家桶 SSO 护照签发";
+            document.getElementById('login-btn').innerText = isRegisterMode ? "确认注册" : "签发护照 (登录)";
+            document.getElementById('login-btn').onclick = isRegisterMode ? doRegister : doLogin;
+            document.getElementById('mode-toggle').innerText = isRegisterMode ? "返回登录" : "注册新账号";
+            document.getElementById('msg').innerText = "";
+        }
+
+        // 独立的注册逻辑
+        async function doRegister() {
+            const u = document.getElementById('username').value.trim();
+            const p = document.getElementById('password').value;
+            const msgObj = document.getElementById('msg');
+            const btn = document.getElementById('login-btn');
+
+            if (!u || !p) return msgObj.innerText = "账号和密码不能为空";
+
+            msgObj.innerText = "";
+            msgObj.style.color = "#6b7280";
+            btn.innerText = "注册哈希计算中...";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: u, password: p })
+                });
+
+                if (res.ok) {
+                    msgObj.style.color = "#10b981"; 
+                    msgObj.innerText = "注册成功！正在返回登录界面...";
+                    document.getElementById('password').value = ""; // 清空密码防侧漏
+                    setTimeout(() => toggleMode(), 1500);
+                } else {
+                    const err = await res.text();
+                    throw new Error(err);
+                }
+            } catch (e) {
+                msgObj.style.color = "#ef4444"; 
+                msgObj.innerText = e.message;
+            } finally {
+                btn.innerText = "确认注册";
+                btn.disabled = false;
+            }
+        }
         async function doLogin() {
             const u = document.getElementById('username').value.trim();
             const p = document.getElementById('password').value;
