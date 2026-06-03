@@ -34,4 +34,184 @@
         <h1>统一认证中心</h1>
         <p>私有云全家桶 SSO 护照签发</p>
         
-        <input type="text" id="username" placeholder="请输入账号" autocomplete="username
+        <input type="text" id="username" placeholder="请输入账号" autocomplete="username">
+        <input type="password" id="password" placeholder="请输入密码" autocomplete="current-password" onkeypress="if(event.key === 'Enter') document.getElementById('login-btn').click()">
+        
+        <input type="email" id="email" class="reg-only" placeholder="请输入真实邮箱 (仅注册需要)">
+        <div class="code-group reg-only">
+            <input type="text" id="code" placeholder="6位验证码" onkeypress="if(event.key === 'Enter') document.getElementById('login-btn').click()">
+            <button type="button" id="send-code-btn" class="code-btn" onclick="sendCode()">获取验证码</button>
+        </div>
+        <button id="login-btn" onclick="doLogin()">签发护照 (登录)</button>
+        <div id="msg"></div>
+    </div>
+
+    <script>
+        let isRegisterMode = false;
+
+        // 切换界面的显示模式
+        function toggleMode() {
+            isRegisterMode = !isRegisterMode;
+            document.querySelector('.login-box h1').innerText = isRegisterMode ? "申请系统护照" : "统一认证中心";
+            document.querySelector('.login-box p').innerText = isRegisterMode ? "首次使用请注册主密码" : "私有云全家桶 SSO 护照签发";
+            document.getElementById('login-btn').innerText = isRegisterMode ? "确认注册" : "签发护照 (登录)";
+            document.getElementById('login-btn').onclick = isRegisterMode ? doRegister : doLogin;
+            document.getElementById('mode-toggle').innerText = isRegisterMode ? "返回登录" : "注册新账号";
+            document.getElementById('msg').innerText = "";
+
+            // ✨ 新增：动态切换邮箱和验证码模块的显示状态
+            const regEls = document.querySelectorAll('.reg-only');
+            regEls.forEach(el => {
+                if (isRegisterMode) {
+                    el.style.display = el.classList.contains('code-group') ? 'flex' : 'block';
+                } else {
+                    el.style.display = 'none';
+                }
+            });
+        }
+
+        // ✨ 新增：呼叫外卖小哥发送验证码的独立逻辑
+        async function sendCode() {
+            const e = document.getElementById('email').value.trim();
+            const msgObj = document.getElementById('msg');
+            const btn = document.getElementById('send-code-btn');
+
+            if (!e || !e.includes('@')) return msgObj.innerText = "请先输入正确的邮箱格式";
+
+            msgObj.innerText = "";
+            btn.disabled = true;
+            let countdown = 60;
+            btn.innerText = `${countdown}s 后重试`;
+
+            // 按钮防刷倒计时
+            const timer = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    btn.innerText = `${countdown}s 后重试`;
+                } else {
+                    clearInterval(timer);
+                    btn.innerText = "获取验证码";
+                    btn.disabled = false;
+                }
+            }, 1000);
+
+            try {
+                const res = await fetch('/api/send-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: e })
+                });
+
+                if (res.ok) {
+                    msgObj.style.color = "#10b981";
+                    msgObj.innerText = "验证码已发送，请查收邮件 (5分钟有效)";
+                } else {
+                    const err = await res.text();
+                    throw new Error(err);
+                }
+            } catch (error) {
+                clearInterval(timer); // 报错提前解除锁定
+                btn.innerText = "获取验证码";
+                btn.disabled = false;
+                msgObj.style.color = "#ef4444";
+                msgObj.innerText = error.message;
+            }
+        }
+
+        // 独立的注册逻辑
+        async function doRegister() {
+            const u = document.getElementById('username').value.trim();
+            const p = document.getElementById('password').value;
+            // ✨ 新增：获取邮箱和验证码
+            const e = document.getElementById('email').value.trim();
+            const c = document.getElementById('code').value.trim();
+            
+            const msgObj = document.getElementById('msg');
+            const btn = document.getElementById('login-btn');
+
+            // ✨ 修改：增加必填项拦截
+            if (!u || !p || !e || !c) return msgObj.innerText = "请完整填写所有注册信息";
+
+            msgObj.innerText = "";
+            msgObj.style.color = "#6b7280";
+            btn.innerText = "注册哈希计算中...";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    // ✨ 修改：将 email 和 code 拼装进发送给后端的包裹里
+                    body: JSON.stringify({ username: u, password: p, email: e, code: c })
+                });
+
+                if (res.ok) {
+                    msgObj.style.color = "#10b981"; 
+                    msgObj.innerText = "注册成功！正在返回登录界面...";
+                    document.getElementById('password').value = ""; // 清空密码防侧漏
+                    document.getElementById('code').value = "";     // 清空验证码
+                    setTimeout(() => toggleMode(), 1500);
+                } else {
+                    const err = await res.text();
+                    throw new Error(err);
+                }
+            } catch (e) {
+                msgObj.style.color = "#ef4444"; 
+                msgObj.innerText = e.message;
+            } finally {
+                btn.innerText = "确认注册";
+                btn.disabled = false;
+            }
+        }
+        
+        async function doLogin() {
+            const u = document.getElementById('username').value.trim();
+            const p = document.getElementById('password').value;
+            const msgObj = document.getElementById('msg');
+            const btn = document.getElementById('login-btn');
+
+            if (!u || !p) return msgObj.innerText = "账号和密码不能为空";
+
+            msgObj.innerText = "";
+            msgObj.style.color = "#6b7280";
+            btn.innerText = "验证中...";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: u, password: p })
+                });
+
+                if (res.ok) {
+                    msgObj.style.color = "#10b981"; // 绿色
+                    msgObj.innerText = "登录成功！正在进入系统...";
+                    
+                    // 获取 URL 中的 returnUrl 参数（如果有的话），用于登录后跳回业务系统
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const returnUrl = urlParams.get('returnUrl');
+                    
+                    setTimeout(() => {
+                        if (returnUrl) {
+                            window.location.href = returnUrl;
+                        } else {
+                            msgObj.innerText = "已获取全域凭证 (无返回目标)";
+                        }
+                    }, 1000);
+                } else {
+                    const err = await res.text();
+                    throw new Error(err);
+                }
+            } catch (e) {
+                msgObj.style.color = "#ef4444"; // 红色
+                msgObj.innerText = e.message;
+            } finally {
+                btn.innerText = "签发护照 (登录)";
+                btn.disabled = false;
+            }
+        }
+    </script>
+
+</body>
+</html>
