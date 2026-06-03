@@ -13,15 +13,15 @@ export async function onRequestPost(context) {
     
     try {
         const body = await request.json();
-        // 前端登录框的 id 还是 username，但用户在这里其实输入的是邮箱
-        const { username: loginEmail, password } = body;
+        // ✨ 改为直接接收 email 字段
+        const { email, password } = body;
 
-        if (!loginEmail || !password) {
+        if (!email || !password) {
             return new Response("请输入邮箱和密码", { status: 400 });
         }
 
-        // 1. 呼叫仓储：通过邮箱获取完整的用户档案（底层会自动查指路牌和本体）
-        const userRecord = await getUserByEmail(env, loginEmail);
+        // 1. 呼叫仓储：通过邮箱获取完整的用户档案
+        const userRecord = await getUserByEmail(env, email);
         
         if (!userRecord) {
             return new Response("账号不存在", { status: 401 });
