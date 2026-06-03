@@ -25,8 +25,14 @@ export async function onRequestPost(context) {
 
         const userRecord = JSON.parse(userRecordStr);
 
-        // 2. 验证密码 (目前为明文对比，后续建议加上 SHA-256)
-        if (password !== userRecord.password) {
+        // 2. 安全升级：将用户输入的明文密码转换为 SHA-256 哈希值
+        const encoder = new TextEncoder();
+        const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(password));
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+        // 将算出的哈希值，与 KV 数据库里存的哈希密文进行比对
+        if (passwordHash !== userRecord.password_hash) {
             return new Response("密码错误", { status: 401 });
         }
 
