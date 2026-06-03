@@ -48,7 +48,6 @@ export async function onRequestPost(context) {
         const headAndPayload = `${base64UrlEncode(JSON.stringify(header))}.${base64UrlEncode(JSON.stringify(payload))}`;
 
         // 4. 用环境变量里的 JWT_SECRET 盖章
-        const encoder = new TextEncoder();
         const key = await crypto.subtle.importKey(
             "raw", encoder.encode(env.JWT_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
         );
