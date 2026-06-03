@@ -10,10 +10,11 @@ export async function onRequestPost(context) {
     
     try {
         const body = await request.json();
-        // 前端传来的 username 在这套极简架构下，直接被降级当做 nickname（昵称）使用
-        const { username, password, email, code } = body; 
+        // ✨ 修改：前端不再传 username，彻底极简为仅需邮箱、密码和验证码
+        const { email, password, code } = body; 
 
-        if (!username || !password || !email || !code || username.length < 3 || password.length < 3) {
+        // ✨ 修改：移除了对 username 的校验拦截
+        if (!email || !password || !code || password.length < 3) {
             return new Response("必填信息不完整或密码太短", { status: 400 });
         }
 
@@ -35,8 +36,12 @@ export async function onRequestPost(context) {
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-        // 4. 呼叫仓储：正式创建账号，系统自动分配 UID 并处理底层双重写入
-        await createUser(env, email, passwordHash, username);
+        // ✨ 新增核心黑科技：提取邮箱 @ 前面的部分作为默认昵称
+        // 例如：clark.kent@gmail.com -> 会被截取为 clark.kent
+        const defaultNickname = email.split('@');
+
+        // 4. ✨ 修改：呼叫仓储正式创建账号，系统自动分配 UID 并处理底层双重写入。传入提取好的默认昵称
+        await createUser(env, email, passwordHash, defaultNickname);
 
         // 5. 注册成功后立刻销毁验证码，防止被重复利用
         await env.USERS_DB.delete(`code_${email}`);
