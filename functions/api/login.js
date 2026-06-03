@@ -60,18 +60,10 @@ export async function onRequestPost(context) {
         const token = `${headAndPayload}.${signature}`;
 
         // 4. 种下全局 Cookie
-        const url = new URL(request.url);
-        let domainAttr = "";
-        if (url.hostname.includes('.')) {
-            const parts = url.hostname.split('.');
-            if (parts.length >= 2 && !url.hostname.endsWith('pages.dev')) {
-                const rootDomain = parts.slice(-2).join('.');
-                domainAttr = `Domain=.${rootDomain};`; 
-            }
-        }
-
+        // 灵活读取：如果有 ROOT_DOMAIN 环境变量，就跨域共享；如果没有，就仅当前域名有效。
+        const domainAttr = env.ROOT_DOMAIN ? `Domain=.${env.ROOT_DOMAIN};` : "";
         const cookieStr = `jwt=${token}; ${domainAttr} HttpOnly; Secure; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax`;
-
+        
         // 登录成功时，前端可以拿到这个人的匿名昵称用于展示
         return new Response(JSON.stringify({ message: "登录成功", nickname: userRecord.nickname }), { 
             status: 200,
