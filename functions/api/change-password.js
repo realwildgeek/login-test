@@ -53,8 +53,8 @@ export async function onRequestPost(context) {
         // 由于我没看到你具体的 repository 实现，这里用最标准的 KV 覆盖方法：
         userRecord.password_hash = newPasswordHash;
         
-        // ⚠️ 请确认你在 KV 里的键名规则是不是 user_邮箱 或者 account_邮箱。如果是，替换下面这行的键名
-        await env.USERS_DB.put(`user_${email}`, JSON.stringify(userRecord)); 
+        // 因为你之前 login.js 里能拿到 userRecord.uid，说明 userRecord 里有 uid 字段
+        await env.USERS_DB.put(`user:${userRecord.uid}`, JSON.stringify(userRecord));
         // （如果你在 repository 里面有写好的 updateUser() 方法，直接调用 updateUser(env, userRecord) 会更优雅）
 
         // 5. 成功返回
